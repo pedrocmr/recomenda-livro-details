@@ -5,7 +5,7 @@ import lombok.Value;
 
 @Builder
 @Value
-public class ImageLinks {
-    String smallThumbnail;
-    String thumbnail;
+public class IndustryIdentifier {
+    String type;
+    String identifier;
 }

@@ -18,7 +18,7 @@ public class BookController {
     }
 
 
-    @PostMapping(value = "/test")
+    @PostMapping(value = "/book-details")
     ResponseEntity<String> generateBookDescription(@RequestBody List<String> books) {
         bookService.getBookInfo(books);
         return ResponseEntity.ok("Ok");
