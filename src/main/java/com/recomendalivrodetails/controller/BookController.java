@@ -1,5 +1,6 @@
 package com.recomendalivrodetails.controller;
 
+import com.recomendalivrodetails.entities.BookInfo;
 import com.recomendalivrodetails.service.BookService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,9 +20,9 @@ public class BookController {
 
 
     @PostMapping(value = "/book-details")
-    ResponseEntity<String> generateBookDescription(@RequestBody List<String> books) {
-        bookService.getBookInfo(books);
-        return ResponseEntity.ok("Ok");
+    ResponseEntity<List<BookInfo>> generateBookDescription(@RequestBody List<String> books) {
+        List<BookInfo> bookInfoList = bookService.retreiveBookInfo(books);
+        return ResponseEntity.ok(bookInfoList);
     }
 
 

@@ -18,7 +18,7 @@ public class BookService {
 
     private static final String GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes?q=intitle:";
 
-    public List<GoogleBooksResponse> getBookInfo(List<String> bookTitles) {
+    private List<GoogleBooksResponse> searchBookData(List<String> bookTitles) {
         List<GoogleBooksResponse> bookInfoList = new ArrayList<>();
         for (String title : bookTitles) {
             String url = GOOGLE_BOOKS_API_URL + title;
@@ -30,16 +30,21 @@ public class BookService {
         return bookInfoList;
     }
 
-//    private List<BookInfo> mapToBookInfo(GoogleBooksResponse response) {
-//        List<BookInfo> bookInfoList = new ArrayList<>();
-//        response.getItems().forEach(item -> {
-//            bookInfoList.add(BookInfo.builder()
-//                    .authors(item.getVolumeInfo().getAuthors())
-//                    .title(item.getVolumeInfo().getTitle())
-//                    .thumbnailUrl(item.getVolumeInfo().getImageLinks().getThumbnail())
-//                    .build());
-//        });
-//        return bookInfoList;
-//    }
+    public List<BookInfo> retreiveBookInfo(List<String> books) {
+
+        List<GoogleBooksResponse> bookData = searchBookData(books);
+
+        List<BookInfo> bookInfoList = new ArrayList<>();
+        bookData.forEach(booksResponse -> {
+            booksResponse.getItems().forEach(item -> {
+                bookInfoList.add(BookInfo.builder()
+                        .authors(item.getVolumeInfo().getAuthors())
+                        .title(item.getVolumeInfo().getTitle())
+                        .thumbnailUrl(item.getVolumeInfo().getImageLinks().getThumbnail())
+                        .build());
+            });
+        });
+        return bookInfoList;
+    }
 
 }
