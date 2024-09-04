@@ -2,7 +2,6 @@ package com.recomendalivrodetails.service;
 
 import com.recomendalivrodetails.entities.BookInfo;
 import com.recomendalivrodetails.entities.GoogleBooksResponse;
-import com.recomendalivrodetails.entities.Item;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -14,11 +13,15 @@ import java.util.List;
 @Service
 public class BookService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     private static final String GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes?q=intitle:";
 
-    private List<GoogleBooksResponse> searchBookData(List<String> bookTitles) {
+    public BookService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    public List<GoogleBooksResponse> searchBookData(List<String> bookTitles) {
         List<GoogleBooksResponse> bookInfoList = new ArrayList<>();
         for (String title : bookTitles) {
             String url = GOOGLE_BOOKS_API_URL + title;
@@ -30,7 +33,7 @@ public class BookService {
         return bookInfoList;
     }
 
-    public List<BookInfo> retreiveBookInfo(List<String> books) {
+    public List<BookInfo> retrieveBookInfo(List<String> books) {
 
         List<GoogleBooksResponse> bookData = searchBookData(books);
 
