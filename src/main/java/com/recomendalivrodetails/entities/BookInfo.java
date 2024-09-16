@@ -8,8 +8,8 @@ import java.util.List;
 @Builder
 @Value
 public class BookInfo {
-
+    String id;
     String title;
     List<String> authors;
-    String thumbnailUrl;
+    ImageLinks imageLinks;
 }

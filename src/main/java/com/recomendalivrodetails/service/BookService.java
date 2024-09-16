@@ -41,9 +41,10 @@ public class BookService {
         bookData.forEach(booksResponse -> {
             booksResponse.getItems().forEach(item -> {
                 bookInfoList.add(BookInfo.builder()
+                        .id(item.getId())
                         .authors(item.getVolumeInfo().getAuthors())
                         .title(item.getVolumeInfo().getTitle())
-                        .thumbnailUrl(item.getVolumeInfo().getImageLinks().getThumbnail())
+                        .imageLinks(item.getVolumeInfo().getImageLinks())
                         .build());
             });
         });
