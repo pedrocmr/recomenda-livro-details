@@ -2,12 +2,15 @@ package com.recomendalivrodetails.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recomendalivrodetails.entities.front.BookData;
+import com.recomendalivrodetails.entities.front.BookDetails;
 import com.recomendalivrodetails.entities.front.BookPreference;
 import com.recomendalivrodetails.entities.google.BookInfo;
 import com.recomendalivrodetails.entities.GoogleBooksResponse;
 import com.recomendalivrodetails.repository.BookDataRepository;
 import com.recomendalivrodetails.repository.BookPreferenceRepository;
 import lombok.SneakyThrows;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -17,9 +20,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class BookService {
@@ -28,7 +29,7 @@ public class BookService {
     private final BookPreferenceRepository bookPreferenceRepository;
     private final BookDataRepository bookDataRepository;
 
-    private static final String GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes?q=intitle:";
+    private static final String GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes?q=intitle:%s&maxResults=1";
     private static final String BOOK_AI_API= "http://localhost:3000/book_recommendations";
 
     public BookService(RestTemplate restTemplate, BookPreferenceRepository bookPreferenceRepository, BookDataRepository bookDataRepository) {
@@ -40,7 +41,7 @@ public class BookService {
     public List<GoogleBooksResponse> searchBookData(List<String> bookTitles) {
         List<GoogleBooksResponse> bookInfoList = new ArrayList<>();
         for (String title : bookTitles) {
-            String url = GOOGLE_BOOKS_API_URL + title;
+            String url = String.format(GOOGLE_BOOKS_API_URL, title);
             ResponseEntity<GoogleBooksResponse> response = restTemplate.getForEntity(url, GoogleBooksResponse.class);
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 bookInfoList.add(response.getBody());
@@ -68,7 +69,7 @@ public class BookService {
     }
 //CALL API DECIO
     @SneakyThrows
-    public void retrieveBookListFromAI(List<String> genres){
+    public HttpResponse<String> retrieveBookListFromAI(List<String> genres){
 
         HttpClient client = HttpClient.newHttpClient();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -82,10 +83,27 @@ public class BookService {
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        return client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
     }
-//SALVAR E REMOVER PREFERENCIAS
+
+    public List<BookInfo> populateBookDetails(String email) {
+
+        Optional<BookPreference> bookPreference = bookPreferenceRepository.findById(email);
+        HttpResponse<String> response = retrieveBookListFromAI(bookPreference.get().getGenders());
+        JSONObject jsonObject = new JSONObject(response.body());
+
+        JSONArray recommendationsArray = jsonObject.getJSONArray("recommendations");
+        List<String> namesList = new ArrayList<>();
+
+        for (int i = 0; i < recommendationsArray.length(); i++) {
+            JSONObject recommendation = recommendationsArray.getJSONObject(i);
+            String name = recommendation.getString("name");
+            namesList.add(name);
+        }
+        return retrieveBookInfo(namesList);
+    }
+
     public Boolean saveBookPreference(BookPreference bookPreference) {
         if (bookPreferenceRepository.existsById(bookPreference.getEmail())) {
             return false;
@@ -93,21 +111,39 @@ public class BookService {
         bookPreferenceRepository.save(bookPreference);
         return true;
     }
-    public void removeBookPreference(BookPreference bookPreference) {
-        bookPreferenceRepository.delete(bookPreference);
-    }
 
     public Boolean getPreference(String email) {
         return bookPreferenceRepository.existsById(email);
     }
 
 
-//FAVOTIRAR LIVROS
-    public void saveFavoriteBookData(BookData bookData) {
-        bookDataRepository.save(bookData);
+    public Boolean saveFavoriteBookData(BookData bookData) {
+        Optional<BookData> data = bookDataRepository.findById(bookData.getEmail());
+        if (data.isPresent()) {
+            List<BookDetails> bookDetails = data.get().getLivros();
+            bookDetails.add(bookData.getLivros().get(0));
+            bookDataRepository.save(bookData);
+            return true;
+        }
+        return false;
     }
 
-    public void getFavoriteBookData(String email) {
+    public BookData getFavoriteBookData(String email) {
+        return bookDataRepository.findById(email).get();
+    }
+    public Boolean removeFavoriteBookData(String email, String idLivro) {
+        Optional<BookData> data = bookDataRepository.findById(email);
+        if (data.isPresent()) {
+            BookData bookData = data.get();
 
+            bookData.getLivros().forEach(book -> {
+                if (book.getIdLivro().equals(idLivro)) {
+                    bookData.getLivros().remove(book);
+                }
+            });
+            bookDataRepository.save(bookData);
+            return true;
+        }
+        return false;
     }
 }
