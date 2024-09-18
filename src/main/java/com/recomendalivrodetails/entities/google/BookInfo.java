@@ -1,5 +1,6 @@
-package com.recomendalivrodetails.entities;
+package com.recomendalivrodetails.entities.google;
 
+import com.recomendalivrodetails.entities.ImageLinks;
 import lombok.Builder;
 import lombok.Value;
 
