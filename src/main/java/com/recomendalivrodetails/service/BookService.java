@@ -68,6 +68,7 @@ public class BookService {
                         .title(item.getVolumeInfo().getTitle())
                         .imageLinks(item.getVolumeInfo().getImageLinks())
                         .publishedDate(item.getVolumeInfo().getPublishedDate())
+                        .resumo(item.getVolumeInfo().getDescription())
                         .isbn(item.getVolumeInfo().getIndustryIdentifiers().get(0).getIdentifier())
                         .build());
             });
