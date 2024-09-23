@@ -3,6 +3,8 @@ package com.recomendalivrodetails.entities.front;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.List;
+
 @Builder
 @Value
 public class BookDetails {
@@ -12,4 +14,5 @@ public class BookDetails {
     String resumo;
     Integer anoLancamento;
     String imagemUrl;
+    List<String> authors;
 }

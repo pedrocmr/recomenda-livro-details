@@ -1,11 +1,13 @@
 package com.recomendalivrodetails.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recomendalivrodetails.advices.exceptions.ObjectNotFoundException;
+import com.recomendalivrodetails.advices.exceptions.ObjetoExistenteException;
+import com.recomendalivrodetails.entities.GoogleBooksResponse;
 import com.recomendalivrodetails.entities.front.BookData;
 import com.recomendalivrodetails.entities.front.BookDetails;
 import com.recomendalivrodetails.entities.front.BookPreference;
 import com.recomendalivrodetails.entities.google.BookInfo;
-import com.recomendalivrodetails.entities.GoogleBooksResponse;
 import com.recomendalivrodetails.repository.BookDataRepository;
 import com.recomendalivrodetails.repository.BookPreferenceRepository;
 import lombok.SneakyThrows;
@@ -20,7 +22,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class BookService {
@@ -30,7 +35,7 @@ public class BookService {
     private final BookDataRepository bookDataRepository;
 
     private static final String GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes?q=intitle:%s&maxResults=1";
-    private static final String BOOK_AI_API= "http://localhost:3000/book_recommendations";
+    private static final String BOOK_AI_API = "http://host.docker.internal:3000/book_recommendations";
 
     public BookService(RestTemplate restTemplate, BookPreferenceRepository bookPreferenceRepository, BookDataRepository bookDataRepository) {
         this.restTemplate = restTemplate;
@@ -62,14 +67,20 @@ public class BookService {
                         .authors(item.getVolumeInfo().getAuthors())
                         .title(item.getVolumeInfo().getTitle())
                         .imageLinks(item.getVolumeInfo().getImageLinks())
+                        .publishedDate(item.getVolumeInfo().getPublishedDate())
+                        .isbn(item.getVolumeInfo().getIndustryIdentifiers().get(0).getIdentifier())
                         .build());
             });
         });
         return bookInfoList;
     }
-//CALL API DECIO
+
+    //CALL API DECIO
     @SneakyThrows
-    public HttpResponse<String> retrieveBookListFromAI(List<String> genres){
+    public HttpResponse<String> retrieveBookListFromAI(List<String> genres) {
+
+        System.out.println("74 - Recebida a requisição - " + getClass().getName());
+        System.out.println("genres: " + genres);
 
         HttpClient client = HttpClient.newHttpClient();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -77,20 +88,38 @@ public class BookService {
         Map<String, List<String>> requestBody = Map.of("genres", genres);
         String jsonBody = objectMapper.writeValueAsString(requestBody);
 
+        System.out.println("83 - Recebida a requisição - " + getClass().getName());
+        System.out.println("jsonBody: " + jsonBody);
+
+
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(new URI(BOOK_AI_API))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        return client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        var retornoAPI = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+        System.out.println("99 - Recebida a requisição - " + getClass().getName());
+        System.out.println("retornoAPI: " + retornoAPI);
+        System.out.println("status: " + retornoAPI.statusCode());
+        System.out.println("retornoBody: " + retornoAPI.body());
+
+
+        return retornoAPI;
 
     }
 
     public List<BookInfo> populateBookDetails(String email) {
 
         Optional<BookPreference> bookPreference = bookPreferenceRepository.findById(email);
+
+        System.out.println("94 - " + getClass().getName());
+        System.out.println("bookPreference: " + bookPreference);
+
         HttpResponse<String> response = retrieveBookListFromAI(bookPreference.get().getGenders());
+
+
         JSONObject jsonObject = new JSONObject(response.body());
 
         JSONArray recommendationsArray = jsonObject.getJSONArray("recommendations");
@@ -117,33 +146,43 @@ public class BookService {
     }
 
 
-    public Boolean saveFavoriteBookData(BookData bookData) {
-        Optional<BookData> data = bookDataRepository.findById(bookData.getEmail());
-        if (data.isPresent()) {
-            List<BookDetails> bookDetails = data.get().getLivros();
-            bookDetails.add(bookData.getLivros().get(0));
-            bookDataRepository.save(bookData);
-            return true;
+    public BookData saveFavoriteBookData2(BookData bookData) throws ObjetoExistenteException {
+        var a = bookDataRepository.findByEmail(bookData.getEmail());
+
+        if (a != null) {
+            if (a.getLivros().stream().anyMatch(book -> book.getIdLivro().equals(bookData.getLivros().get(0).getIdLivro()))) {
+                throw new ObjetoExistenteException("Book already saved");
+            }
+            bookDataRepository.deleteByEmail(bookData.getEmail());
+            a.getLivros().add(bookData.getLivros().get(0));
+            return bookDataRepository.save(a);
         }
-        return false;
+
+        return bookDataRepository.save(bookData);
     }
 
-    public BookData getFavoriteBookData(String email) {
-        return bookDataRepository.findById(email).get();
+    public BookData getFavoriteBookData(String email) throws Exception {
+        var a = bookDataRepository.findByEmail(email);
+        if (a != null) {
+            return a;
+        } else {
+            throw new ObjectNotFoundException("BookData not found");
+        }
     }
+
     public Boolean removeFavoriteBookData(String email, String idLivro) {
-        Optional<BookData> data = bookDataRepository.findById(email);
+        Optional<BookData> data = Optional.ofNullable(bookDataRepository.findByEmail(email));
         if (data.isPresent()) {
             BookData bookData = data.get();
-
-            bookData.getLivros().forEach(book -> {
-                if (book.getIdLivro().equals(idLivro)) {
-                    bookData.getLivros().remove(book);
-                }
-            });
+            bookData.getLivros().removeIf(book -> book.getIdLivro().equals(idLivro));
+            bookDataRepository.deleteByEmail(bookData.getEmail());
             bookDataRepository.save(bookData);
             return true;
         }
         return false;
+    }
+
+    public BookPreference getPreferenceList(String email) {
+        return bookPreferenceRepository.findById(email).orElse(null);
     }
 }

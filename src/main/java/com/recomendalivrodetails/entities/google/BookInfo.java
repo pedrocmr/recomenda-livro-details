@@ -13,4 +13,6 @@ public class BookInfo {
     String title;
     List<String> authors;
     ImageLinks imageLinks;
+    String publishedDate;
+    String isbn;
 }

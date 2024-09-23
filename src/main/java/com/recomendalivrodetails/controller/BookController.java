@@ -2,6 +2,7 @@ package com.recomendalivrodetails.controller;
 
 import com.recomendalivrodetails.entities.front.BookData;
 import com.recomendalivrodetails.entities.front.BookPreference;
+import com.recomendalivrodetails.entities.front.InputDeleteLivro;
 import com.recomendalivrodetails.entities.google.BookInfo;
 import com.recomendalivrodetails.service.BookService;
 import org.springframework.http.HttpStatus;
@@ -28,29 +29,36 @@ public class BookController {
         return new ResponseEntity<>("Already have a preference saved to this email.", HttpStatus.CONFLICT);
     }
 
-    @GetMapping(value = "/get-preference")
-    ResponseEntity<Boolean> getPreference(@RequestBody String email) {
+    @GetMapping(value = "/get-preference/{email}")
+    ResponseEntity<Boolean> getPreference(@PathVariable String email) {
         return new ResponseEntity<>(bookService.getPreference(email), HttpStatus.OK);
     }
 
-    @GetMapping(value = "/get-favorite")
-    ResponseEntity<BookData> getFavoriteBook(@RequestBody String email){
+    @GetMapping(value = "/get-favorite/{email}")
+    ResponseEntity<BookData> getFavoriteBook(@PathVariable String email) throws Exception {
         return new ResponseEntity<>(bookService.getFavoriteBookData(email), HttpStatus.OK);
     }
 
     @DeleteMapping(value = "/remove-book")
-    ResponseEntity<Boolean> removeFavoriteBook(@RequestBody String email, String idLivro) {
-        return new ResponseEntity<>(bookService.removeFavoriteBookData(email, idLivro), HttpStatus.OK);
+    ResponseEntity<Boolean> removeFavoriteBook(@RequestBody InputDeleteLivro input) {
+        return new ResponseEntity<>(bookService.removeFavoriteBookData(input.email(), input.idLivro()), HttpStatus.OK);
     }
 
     @PostMapping(value = "/save-favorite-book")
-    ResponseEntity<Boolean> saveFavoriteBook(@RequestBody BookData book) {
-        return new ResponseEntity<>(bookService.saveFavoriteBookData(book), HttpStatus.OK);
+    ResponseEntity<BookData> saveFavoriteBook2(@RequestBody BookData book) throws Exception {
+        return new ResponseEntity<>(bookService.saveFavoriteBookData2(book), HttpStatus.OK);
     }
 
-    @GetMapping(value = "/get-recomendation")
-    ResponseEntity<List<BookInfo>> getRecomendation(@RequestBody String email){
+    @GetMapping(value = "/get-recomendation/{email}")
+    ResponseEntity<List<BookInfo>> getRecomendation(@PathVariable String email){
+        System.out.println("53 - Recebida a requisição - " + getClass().getName());
+        System.out.println("Email: " + email);
         return new ResponseEntity<>(bookService.populateBookDetails(email), HttpStatus.OK);
-
     }
+
+    @GetMapping(value = "/get-preference/list/{email}")
+    ResponseEntity<?> getPreferencesList(@PathVariable String email) {
+        return new ResponseEntity<>(bookService.getPreferenceList(email), HttpStatus.OK);
+    }
+
 }
